@@ -1,0 +1,292 @@
+version: 1.0.0
+
+nodes:
+  Person:
+    labels:
+      - person
+    properties:
+      id:
+        type: STRING
+        nullable: false
+        unique: true
+      name:
+        type: STRING
+        nullable: false
+      email:
+        type: STRING
+      role:
+        type: STRING
+      mbtiEnergy:
+        type: STRING
+      mbtiInformation:
+        type: STRING
+      mbtiDecisions:
+        type: STRING
+      mbtiStructure:
+        type: STRING
+      enneagram:
+        type: STRING
+      notes:
+        type: STRING
+    indexes:
+      person_search:
+        type: FULLTEXT
+        label: person
+        properties:
+          - name
+          - role
+          - notes
+    extensions:
+      reasoningHint: "People are professional contacts — colleagues, clients, collaborators. Use name/role/notes to understand their context."
+      ui:
+        label: Person
+        plural: People
+        _icon: Users
+        displayName: name
+        displaySub: role
+        _groups:
+          - label: Job
+            fields: [role, email, notes]
+          - label: Myers-Briggs
+            fields: [mbtiEnergy, mbtiInformation, mbtiDecisions, mbtiStructure]
+          - label: Enneagram
+            fields: [enneagram]
+        fields:
+          - key: name
+            label: Name
+            type: text
+            required: true
+            placeholder: "Full name"
+          - key: email
+            label: Email
+            type: email
+            placeholder: "email@example.com"
+          - key: role
+            label: Role
+            type: text
+            placeholder: "e.g. Product Manager"
+          - key: mbtiEnergy
+            label: Energy
+            type: enum
+            options:
+              E:
+                label: Extraversion
+                description: Energised by people & activity
+              I:
+                label: Introversion
+                description: Energised by solitude & reflection
+          - key: mbtiInformation
+            label: Information
+            type: enum
+            options:
+              S:
+                label: Sensing
+                description: Focuses on concrete facts & details
+              N:
+                label: Intuition
+                description: Focuses on patterns & possibilities
+          - key: mbtiDecisions
+            label: Decisions
+            type: enum
+            options:
+              T:
+                label: Thinking
+                description: Decides by logic & objective analysis
+              F:
+                label: Feeling
+                description: Decides by values & impact on people
+          - key: mbtiStructure
+            label: Structure
+            type: enum
+            options:
+              J:
+                label: Judging
+                description: Prefers plans, structure & closure
+              P:
+                label: Perceiving
+                description: Prefers flexibility & staying open
+          - key: enneagram
+            label: Enneagram
+            type: text
+            placeholder: "e.g. 3w4"
+          - key: notes
+            label: Notes
+            type: textarea
+            placeholder: "Anything worth remembering…"
+
+  Project:
+    labels:
+      - project
+    properties:
+      id:
+        type: STRING
+        nullable: false
+        unique: true
+      name:
+        type: STRING
+        nullable: false
+      description:
+        type: STRING
+      status:
+        type: STRING
+        nullable: false
+    indexes:
+      project_search:
+        type: FULLTEXT
+        label: project
+        properties:
+          - name
+          - description
+    extensions:
+      reasoningHint: "Projects are time-boxed initiatives or workstreams. Status can be active, paused, completed, or cancelled."
+      ui:
+        label: Project
+        plural: Projects
+        _icon: FolderKanban
+        displayName: name
+        displaySub: status
+        fields:
+          - key: name
+            label: Name
+            type: text
+            required: true
+            placeholder: "Project name"
+          - key: description
+            label: Description
+            type: textarea
+            placeholder: "What is this project about?"
+          - key: status
+            label: Status
+            type: select
+            required: true
+            options:
+              active:
+                label: Active
+              paused:
+                label: Paused
+              completed:
+                label: Completed
+              cancelled:
+                label: Cancelled
+
+  Task:
+    labels:
+      - task
+    properties:
+      id:
+        type: STRING
+        nullable: false
+        unique: true
+      title:
+        type: STRING
+        nullable: false
+      description:
+        type: STRING
+      status:
+        type: STRING
+        nullable: false
+      priority:
+        type: STRING
+        nullable: false
+      dueDate:
+        type: STRING
+    indexes:
+      task_search:
+        type: FULLTEXT
+        label: task
+        properties:
+          - title
+          - description
+    extensions:
+      reasoningHint: "Tasks are discrete units of work. Priority can be high/medium/low; status can be todo/in_progress/blocked/done."
+      ui:
+        label: Task
+        plural: Tasks
+        _icon: CheckSquare
+        displayName: title
+        displaySub: status
+        fields:
+          - key: title
+            label: Title
+            type: text
+            required: true
+            placeholder: "What needs to be done?"
+          - key: description
+            label: Description
+            type: textarea
+            placeholder: "Additional context…"
+          - key: projectId
+            label: Project
+            type: relation
+            endpoint: /api/entities/project
+            labelKey: name
+            valueKey: id
+            relationship: partOf
+          - key: status
+            label: Status
+            type: select
+            required: true
+            options:
+              todo:
+                label: To Do
+              in_progress:
+                label: In Progress
+              blocked:
+                label: Blocked
+              done:
+                label: Done
+          - key: priority
+            label: Priority
+            type: select
+            required: true
+            options:
+              high:
+                label: High
+              medium:
+                label: Medium
+              low:
+                label: Low
+          - key: dueDate
+            label: Due Date
+            type: date
+
+relationships:
+  worksOn:
+    type: WORKS_ON
+    from: Person
+    to: Project
+    extensions:
+      outMinCardinality: 0
+      outMaxCardinality: many
+      inMinCardinality: 0
+      inMaxCardinality: many
+
+  assignedTo:
+    type: ASSIGNED_TO
+    from: Person
+    to: Task
+    extensions:
+      outMinCardinality: 0
+      outMaxCardinality: many
+      inMinCardinality: 0
+      inMaxCardinality: 1
+
+  partOf:
+    type: PART_OF
+    from: Task
+    to: Project
+    extensions:
+      outMinCardinality: 0
+      outMaxCardinality: 1
+      inMinCardinality: 0
+      inMaxCardinality: many
+
+  knows:
+    type: KNOWS
+    from: Person
+    to: Person
+    extensions:
+      outMinCardinality: 0
+      outMaxCardinality: many
+      inMinCardinality: 0
+      inMaxCardinality: many

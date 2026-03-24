@@ -136,6 +136,7 @@ async function* runAnthropicChat(opts: RunChatOptions): AsyncGenerator<ChatEvent
     if (toolUseBlocks.length === 0) break
 
     const toolResults: Array<{ type: "tool_result"; tool_use_id: string; content: string }> = []
+    let interrupted = false
     for (const tb of toolUseBlocks) {
       const handler = opts.tools.find(t => t.definition.name === tb.name)?.handler
       let content: string
@@ -152,10 +153,13 @@ async function* runAnthropicChat(opts: RunChatOptions): AsyncGenerator<ChatEvent
           yield { type: "choice_form", question: interrupt.question, options: interrupt.options, multiple: interrupt.multiple }
         }
         content = interrupt.__aiMessage
+        interrupted = true
       }
       yield { type: "tool_result" as const, name: tb.name, id: tb.id, result: content }
       toolResults.push({ type: "tool_result", tool_use_id: tb.id, content })
     }
+
+    if (interrupted) break
 
     currentMessages = [
       ...currentMessages,
@@ -236,6 +240,7 @@ async function* runOpenAIChat(opts: RunChatOptions): AsyncGenerator<ChatEvent> {
     ]
 
     const openaiToolResults: Array<{ role: "tool"; tool_call_id: string; content: string }> = []
+    let interrupted = false
     for (const tc of toolCalls) {
       const handler = opts.tools.find(t => t.definition.name === tc.name)?.handler
       let content: string
@@ -252,12 +257,14 @@ async function* runOpenAIChat(opts: RunChatOptions): AsyncGenerator<ChatEvent> {
           yield { type: "choice_form", question: interrupt.question, options: interrupt.options, multiple: interrupt.multiple }
         }
         content = interrupt.__aiMessage
+        interrupted = true
       }
       yield { type: "tool_result" as const, name: tc.name, id: tc.id, result: content }
       openaiToolResults.push({ role: "tool", tool_call_id: tc.id, content })
     }
 
     messages = [...messages, ...openaiToolResults]
+    if (interrupted) break
   }
 }
 
@@ -308,6 +315,7 @@ async function* runGeminiChat(opts: RunChatOptions): AsyncGenerator<ChatEvent> {
     if (functionCalls.length === 0) break
 
     const geminiParts: unknown[] = []
+    let interrupted = false
     for (const fc of functionCalls) {
       const handler = opts.tools.find(t => t.definition.name === fc.name)?.handler
       let result: unknown
@@ -319,16 +327,22 @@ async function* runGeminiChat(opts: RunChatOptions): AsyncGenerator<ChatEvent> {
         rawResult = err instanceof Error ? err.message : String(err)
         result = { error: rawResult }
       }
-      const formPayload = parseEntityForm(rawResult)
-      if (formPayload) {
-        yield { type: "entity_form", entityType: formPayload.entityType, prefilled: formPayload.prefilled }
-        rawResult = formPayload.__aiMessage
+      const interrupt = parseInterrupt(rawResult)
+      if (interrupt) {
+        if ('__entityForm' in interrupt) {
+          yield { type: "entity_form", entityType: interrupt.entityType, prefilled: interrupt.prefilled }
+        } else {
+          yield { type: "choice_form", question: interrupt.question, options: interrupt.options, multiple: interrupt.multiple }
+        }
+        rawResult = interrupt.__aiMessage
         result = { message: rawResult }
+        interrupted = true
       }
       yield { type: "tool_result" as const, name: fc.name, id: fc.name + "_result", result: rawResult }
       geminiParts.push({ functionResponse: { name: fc.name, response: result } })
     }
     currentParts = geminiParts
+    if (interrupted) break
   }
 }
 

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Box, Plus, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EntityDialog } from "@/components/entity/EntityDialog"
-import { getClientEntity, makeEntityDef } from "@/entities/client-config"
-import type { FieldDef } from "@/entities/types"
+import { makeEntityDef, type ClientEntityConfig } from "@/entities/client-config"
+import { getIcon } from "@/lib/spec/icon-map"
 
 function displayName(item: Record<string, unknown>): string {
   return String(item.name ?? item.title ?? item.id ?? "Untitled")
@@ -19,23 +19,37 @@ interface EntityListPageProps {
   type: string
   label: string
   plural: string
-  fields: FieldDef[]
-  initialItems: Record<string, unknown>[]
+  iconName?: string
 }
 
 export function EntityListPage(props: EntityListPageProps) {
-  const { type, label, plural, initialItems } = props
-  const config = getClientEntity(type)
-  const Icon = config?.icon ?? Box
+  const { type, label, plural, iconName } = props
+  const Icon = iconName ? getIcon(iconName) : Box
 
-  const [items, setItems] = useState<Record<string, unknown>[]>(initialItems)
+  const [items, setItems] = useState<Record<string, unknown>[]>([])
+  const [config, setConfig] = useState<ClientEntityConfig | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/entities/${type}`).then(async r => {
+        if (!r.ok) throw new Error(await r.text())
+        return r.json() as Promise<Record<string, unknown>[]>
+      }),
+      fetch("/api/spec").then(r => r.json()).then(data =>
+        (data?.entities as ClientEntityConfig[])?.find(e => e.type.toLowerCase() === type.toLowerCase())
+      ),
+    ])
+      .then(([data, cfg]) => { setItems(data); if (cfg) setConfig(cfg) })
+      .catch(err => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoading(false))
+  }, [type])
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Record<string, unknown> | undefined>()
 
-  const entity = makeEntityDef(
-    config ?? { type, label, plural, icon: Box, fields: props.fields }
-  )
+  const entity = makeEntityDef(config ?? { type, label, plural, iconName: iconName ?? "Box", fields: [] })
 
   async function handleDelete(id: unknown) {
     if (!confirm(`Delete this ${label}?`)) return
@@ -70,9 +84,10 @@ export function EntityListPage(props: EntityListPageProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {loading && <div className="p-6 text-muted-foreground text-sm">Loading…</div>}
         {error && <div className="p-4 text-destructive text-sm">{error}</div>}
 
-        {items.length === 0 && !error && (
+        {!loading && items.length === 0 && !error && (
           <div className="p-6 text-muted-foreground text-sm">
             No {plural.toLowerCase()} yet.{" "}
             <button onClick={openCreate} className="underline">Create one.</button>

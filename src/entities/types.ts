@@ -1,12 +1,17 @@
 import type { LucideIcon } from "lucide-react"
 
+export interface FieldGroup {
+  label: string
+  fields: string[]
+}
+
 export interface FieldDef {
   key: string
   label: string
-  type: "text" | "email" | "textarea" | "select" | "date" | "mbti" | "relation"
+  type: "text" | "email" | "textarea" | "select" | "enum" | "date" | "relation"
   required?: boolean
   placeholder?: string
-  options?: Array<{ value: string; label: string }>
+  options?: Array<{ value: string; label: string; description?: string }>
   /** For type "relation" — API endpoint to fetch options from */
   endpoint?: string
   /** Key to use as the display label (default: "name") */
@@ -25,6 +30,8 @@ export interface EntityDef<T extends Record<string, unknown> = Record<string, un
   description: string
   /** Ordered list of fields shown in create/edit forms */
   fields: FieldDef[]
+  /** Optional tab groups — fields listed here render in named tabs */
+  groups?: FieldGroup[]
 
   /** Extract the primary display string from an item */
   displayName: (item: T) => string

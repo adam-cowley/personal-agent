@@ -30,18 +30,27 @@ export interface Message {
   toolResults?: Record<string, string>
   isStreaming?: boolean
   isThinking?: boolean
+  /** Set for group chat turns */
+  personaId?: string
+  personaName?: string
 }
 
 export function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user"
+  const avatarLabel = isUser ? "Me" : (message.personaName ? message.personaName.slice(0, 2) : "E")
 
   return (
     <div className={cn("flex gap-3 px-4 py-3", isUser && "flex-row-reverse")}>
-      <Avatar className="size-9 shrink-0 mt-0.5">
-        <AvatarFallback className="text-sm font-medium">
-          {isUser ? "Me" : "E"}
-        </AvatarFallback>
-      </Avatar>
+      <div className="flex flex-col items-center gap-1 shrink-0">
+        <Avatar className="size-9 mt-0.5">
+          <AvatarFallback className="text-sm font-medium">
+            {avatarLabel}
+          </AvatarFallback>
+        </Avatar>
+        {!isUser && message.personaName && (
+          <span className="text-[10px] text-muted-foreground leading-none">{message.personaName}</span>
+        )}
+      </div>
 
       <div className={cn("flex flex-col gap-2 max-w-[80%]", isUser && "items-end")}>
         {/* Thinking block — only shown for assistant */}

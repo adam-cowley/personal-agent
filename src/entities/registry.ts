@@ -1,9 +1,9 @@
 /**
- * Entity Registry — the single source of truth for all entity types.
+ * Entity Registry — driven by config/graph.yaml.
  *
  * To add a new entity type:
- *   1. Create src/entities/<name>.ts exporting an EntityDef
- *   2. Add it to the `entities` array below
+ *   1. Add a node to config/graph.yaml with labels, properties, and extensions.ui
+ *   2. That's it — CRUD, forms, and system prompt context are generated automatically.
  *
  * The registry is used by:
  *   - The hamburger menu (icons + labels)
@@ -13,17 +13,11 @@
  *   - Chat entity extraction
  */
 
-import { personEntity } from "./person"
-import { projectEntity } from "./project"
-import { taskEntity } from "./task"
+import { buildAllEntityDefs } from "@/lib/spec/entity-crud"
 import type { EntityDef } from "./types"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const entities: EntityDef<any>[] = [
-  personEntity,
-  projectEntity,
-  taskEntity,
-]
+export const entities: EntityDef<any>[] = buildAllEntityDefs()
 
 export function getEntity(type: string): EntityDef | undefined {
   return entities.find(e => e.type.toLowerCase() === type.toLowerCase())

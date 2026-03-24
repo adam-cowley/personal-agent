@@ -1,23 +1,28 @@
-import type { LucideIcon } from "lucide-react"
+export type PersonaCategory = "default" | "persona" | "coach" | "panel"
 
-export interface PersonSummary {
+export interface PersonaSummary {
   id: string
   name: string
   role?: string
   notes?: string
 }
 
-export type ModeCategory = "default" | "persona" | "coach" | "panel"
-
-export interface Mode {
+/** Client-safe persona definition (no server imports) */
+export interface Persona {
   id: string
-  label: string
+  name: string
   description: string
-  icon: LucideIcon
-  category: ModeCategory
+  category: PersonaCategory
+  mbti?: string | null
+  enneagram?: string | null
+  provider: "anthropic" | "openai" | "gemini"
+  model: string
   welcomeMessage: string
-  /** If true, user must select people from graph before activating */
-  requiresPeople?: boolean
-  /** Build the persona portion of the system prompt */
-  buildSystemPrompt(people: PersonSummary[], context?: Record<string, unknown>): string
+  /** If true, UI shows MBTI picker before activating */
+  requiresMbtiTarget?: boolean
+}
+
+/** Server-side persona with full instructions */
+export interface PersonaWithInstructions extends Persona {
+  instructions: string
 }

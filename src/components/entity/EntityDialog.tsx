@@ -19,16 +19,18 @@ export function EntityDialog({ entity, initial, open, onClose, onSaved }: Entity
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-sm w-full">
-        <DialogHeader>
+      <DialogContent className="max-w-sm w-full max-h-[80vh] flex flex-col gap-0 p-0">
+        <DialogHeader className="px-4 pt-4 pb-3 border-b shrink-0">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <EntityForm
-          entity={entity}
-          initial={initial}
-          onSuccess={item => { onSaved(item); onClose() }}
-          onCancel={onClose}
-        />
+        <div className="overflow-y-auto flex-1 px-4 py-4">
+          <EntityForm
+            entity={entity}
+            initial={initial}
+            onSuccess={item => { onSaved(item); onClose() }}
+            onCancel={onClose}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   )

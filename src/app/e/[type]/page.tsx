@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import { getEntity } from "@/entities/registry"
+import { loadGraphSpec } from "@/lib/spec/loader"
 import { EntityListPage } from "@/components/entity/EntityListPage"
 import { AppShell } from "@/components/layout/AppShell"
 
@@ -8,8 +9,8 @@ export default async function EntityPage({ params }: { params: Promise<{ type: s
   const entity = getEntity(type)
   if (!entity) notFound()
 
-  let initialItems: Record<string, unknown>[] = []
-  try { initialItems = await entity.list() } catch { /* show empty */ }
+  const graphSpec = loadGraphSpec()
+  const iconName = graphSpec.nodes[entity.type]?.extensions?.ui?._icon
 
   return (
     <AppShell>
@@ -17,8 +18,7 @@ export default async function EntityPage({ params }: { params: Promise<{ type: s
         type={entity.type.toLowerCase()}
         label={entity.label}
         plural={entity.plural}
-        fields={entity.fields}
-        initialItems={initialItems}
+        iconName={iconName}
       />
     </AppShell>
   )

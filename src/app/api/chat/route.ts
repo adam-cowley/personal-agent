@@ -1,46 +1,49 @@
 import { NextRequest } from "next/server"
 import { getAllSkillTools } from "@/lib/skills/registry"
 import { runChat } from "@/lib/models/adapter"
-import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelConfig } from "@/lib/models/types"
+import type { ModelConfig } from "@/lib/models/types"
 import { getHistory, appendHistory, clearHistory } from "@/lib/chat/sessions"
 import { entitySystemContext } from "@/entities/registry"
-import { getMode, DEFAULT_MODE_ID } from "@/modes/registry"
-import { personEntity } from "@/entities/person"
+import { getPersona, buildSystemPrompt, DEFAULT_PERSONA_ID, getAllPersonas } from "@/modes/registry"
+import { getEntity } from "@/entities/registry"
 import { persistMessages } from "@/lib/chat/neo4j-sessions"
-import { getConfig } from "@/lib/config"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
-  const { sessionId, message, model: modelId, modeId, personIds, modeContext } = await req.json() as {
+  const { sessionId, message, personaId, modeContext } = await req.json() as {
     sessionId: string
     message: string
-    model?: string
-    modeId?: string
-    personIds?: string[]
+    personaId?: string
     modeContext?: Record<string, unknown>
   }
 
-  const model: ModelConfig = AVAILABLE_MODELS.find(m => m.model === modelId) ?? DEFAULT_MODEL
+  const persona = getPersona(personaId ?? DEFAULT_PERSONA_ID) ?? getAllPersonas()[0]
   const tools = getAllSkillTools()
 
-  // Resolve mode and build system prompt
-  const mode = getMode(modeId ?? DEFAULT_MODE_ID) ?? getMode(DEFAULT_MODE_ID)!
-  let people: { id: string; name: string; role?: string; notes?: string }[] = []
-  if (personIds && personIds.length > 0) {
-    const all = await personEntity.list()
-    people = all.filter(p => personIds.includes(p.id as string))
-      .map(p => ({ id: p.id as string, name: p.name as string, role: p.role as string | undefined, notes: p.notes as string | undefined }))
+  // Fetch people if persona needs them (e.g. mbti-coach)
+  let people: Array<{ id: string; name: string; role?: string; notes?: string }> = []
+  if (persona.requiresMbtiTarget) {
+    const personEntity = getEntity("Person")
+    if (personEntity) {
+      const all = await personEntity.list()
+      people = all.map(p => ({
+        id: p.id as string,
+        name: p.name as string,
+        role: p.role as string | undefined,
+        notes: p.notes as string | undefined,
+      }))
+    }
   }
-  const appConfig = await getConfig()
-  // For the default mode: use the custom system prompt if set, otherwise fall back to the built-in
-  const modePrompt = (mode.id === DEFAULT_MODE_ID && appConfig.systemPrompt)
-    ? appConfig.systemPrompt.replace(/\{name\}/g, appConfig.name)
-    : mode.buildSystemPrompt(people, modeContext).replace(/Elsie/g, appConfig.name)
-  const systemPrompt = `${modePrompt}\n\n${entitySystemContext()}`
 
-  // Fetch existing history and append the new user message
+  const systemPrompt = `${buildSystemPrompt(persona, {
+    targetMbti: modeContext?.targetMbti as string | undefined,
+    people,
+  })}\n\n${entitySystemContext()}`
+
+  const model: ModelConfig = { provider: persona.provider, model: persona.model, label: persona.name }
+
   const history = getHistory(sessionId)
   const newUserMsg = { role: "user" as const, content: message }
   appendHistory(sessionId, [newUserMsg])
@@ -68,11 +71,10 @@ export async function POST(req: NextRequest) {
 
         if (textAcc) {
           appendHistory(sessionId, [{ role: "assistant", content: textAcc }])
-          // Persist to Neo4j for history + search (fire and forget — don't block stream close)
           void persistMessages(sessionId, [
             { role: "user", content: message },
             { role: "assistant", content: textAcc },
-          ], modeId ?? DEFAULT_MODE_ID).catch(() => { /* non-fatal */ })
+          ], personaId ?? DEFAULT_PERSONA_ID).catch(() => { /* non-fatal */ })
         }
 
         controller.enqueue(encoder.encode("data: [DONE]\n\n"))

@@ -18,7 +18,7 @@ export async function getPerson(id: string) {
     OPTIONAL MATCH (p)-[:WORKS_ON]->(proj:Project)
     OPTIONAL MATCH (p)-[:ASSIGNED_TO]->(t:Task)
     OPTIONAL MATCH (p)-[:KNOWS]->(knows:Person)
-    RETURN p {.*, } AS person,
+    RETURN p {.*} AS person,
            collect(DISTINCT proj {.id, .name, .status}) AS projects,
            collect(DISTINCT t {.id, .title, .status, .priority}) AS tasks,
            collect(DISTINCT knows {.id, .name}) AS connections

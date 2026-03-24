@@ -1,15 +1,31 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import Link from "next/link"
-import { Menu } from "lucide-react"
+import { Menu, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { entities } from "@/entities/registry"
+import { getIcon } from "@/lib/spec/icon-map"
 import { cn } from "@/lib/utils"
+
+interface EntityItem {
+  type: string
+  plural: string
+  iconName: string
+}
 
 export function EntityMenu() {
   const [open, setOpen] = useState(false)
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>()
+  const [entityItems, setEntityItems] = useState<EntityItem[]>([])
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  useEffect(() => {
+    fetch("/api/spec")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.entities) setEntityItems(data.entities)
+      })
+      .catch(() => {})
+  }, [])
 
   function show() {
     clearTimeout(closeTimer.current)
@@ -39,8 +55,18 @@ export function EntityMenu() {
 
       {open && (
         <div className="absolute top-full left-0 mt-1 z-50 bg-popover border rounded-lg shadow-md py-1 min-w-[160px]">
-          {entities.map(entity => {
-            const Icon = entity.icon
+          <Link
+            href="/"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/70 transition-colors"
+          >
+            <MessageSquare className="size-4 text-muted-foreground shrink-0" />
+            Chat
+          </Link>
+          <div className="my-1 border-t" />
+          <p className="px-3 py-1 text-xs font-medium text-muted-foreground">Entities</p>
+          {entityItems.map(entity => {
+            const Icon = getIcon(entity.iconName)
             return (
               <Link
                 key={entity.type}
