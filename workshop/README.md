@@ -12,7 +12,17 @@ A [Mastra](https://mastra.ai) agent (scaffolded with `npm create mastra@latest`)
 
 The flat files are always written, so you can `cat` them next to the graph. Extensions that own a *read* path (short-term, long-term) take over injecting context from the flat files.
 
-## Setup
+## Run in a GitHub Codespace (easiest)
+
+Open the repo in a Codespace (**Code → Codespaces → Create**). The dev container starts a **Neo4j 5** service next to your workspace, installs dependencies, writes `.env` with the connection details, and pre-creates the schema for every extension. Before you start:
+
+1. Add an `ANTHROPIC_API_KEY` [Codespaces secret](https://github.com/settings/codespaces) for this repo (or put it in `workshop/.env`).
+2. In the terminal (already in `workshop/`): `npm run dev`, then open the forwarded port **4111** (Mastra Studio).
+3. Neo4j Browser is on port **7474**, login `neo4j` / `workshop-password` (Bolt: `bolt://neo4j:7687` from the workspace).
+
+Then work through the steps below with `npm run ext -- enable <id>` (no `setup` needed, it's already done). `npm run ext -- enable all` switches on every extension at once; `npm run ext -- disable all` returns to flat files only. The Neo4j data persists in a Docker volume for the life of the Codespace.
+
+## Setup (local)
 
 ```bash
 npm install

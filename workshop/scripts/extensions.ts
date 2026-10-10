@@ -1,8 +1,8 @@
 /**
  * Workshop helper:
  *   npm run ext                      list extensions and whether they're on
- *   npm run ext -- enable <id>       switch an extension on (edits .env)
- *   npm run ext -- disable <id>      switch it off
+ *   npm run ext -- enable <id|all>   switch an extension (or every one) on (edits .env)
+ *   npm run ext -- disable <id|all>  switch it off
  *   npm run ext -- setup             create Neo4j constraints/indexes for enabled extensions
  *   npm run ext -- check             test the Neo4j connection
  *   npm run ext -- skills [show|approve|reject <name>]      review skills the agent proposed
@@ -29,7 +29,7 @@ function writeEnabled(ids: ExtensionId[]) {
 function resolveId(input?: string): ExtensionId {
   // Accept "short-term" as shorthand for "neo4j-short-term".
   const id = [input, `neo4j-${input}`].find((c) => (EXTENSION_IDS as readonly string[]).includes(c ?? ''));
-  if (!id) throw new Error(`Pick one of: ${EXTENSION_IDS.join(', ')}`);
+  if (!id) throw new Error(`Pick one of: ${EXTENSION_IDS.join(', ')}, or all`);
   return id as ExtensionId;
 }
 
@@ -46,12 +46,12 @@ async function main() {
     }
     case 'enable':
     case 'disable': {
-      const id = resolveId(arg);
+      const ids = arg === 'all' ? [...EXTENSION_IDS] : [resolveId(arg)];
       const on = new Set(enabledIds());
-      cmd === 'enable' ? on.add(id) : on.delete(id);
+      for (const id of ids) cmd === 'enable' ? on.add(id) : on.delete(id);
       writeEnabled(EXTENSION_IDS.filter((x) => on.has(x)));
-      console.log(`${cmd === 'enable' ? 'Enabled' : 'Disabled'} ${id}. Restart the dev server to pick it up.`);
-      if (cmd === 'enable') console.log('Run `npm run ext -- setup` once to create its Neo4j constraints.');
+      console.log(`${cmd === 'enable' ? 'Enabled' : 'Disabled'} ${ids.join(', ')}. Restart the dev server to pick it up.`);
+      if (cmd === 'enable') console.log('If this is not the Codespace, run `npm run ext -- setup` once to create the Neo4j constraints.');
       return;
     }
     case 'setup': {
