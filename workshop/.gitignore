@@ -16,3 +16,6 @@ src/mastra/public/
 # Agent memory is runtime data (keep the folder, not the contents)
 memory/*
 !memory/.gitkeep
+
+# Skills the agent drafted but a human has not approved yet
+skills/_proposed/

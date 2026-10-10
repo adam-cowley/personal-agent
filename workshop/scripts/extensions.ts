@@ -5,11 +5,14 @@
  *   npm run ext -- disable <id>      switch it off
  *   npm run ext -- setup             create Neo4j constraints/indexes for enabled extensions
  *   npm run ext -- check             test the Neo4j connection
+ *   npm run ext -- skills [show|approve|reject <name>]   review skills the agent proposed
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { ALL_EXTENSIONS, activeExtensions } from '../src/mastra/extensions';
 import { EXTENSION_IDS, enabledIds, type ExtensionId } from '../src/mastra/extensions/registry';
 import { closeDriver, getDriver } from '../src/mastra/extensions/neo4j';
+import { approveSkill, rejectSkill } from '../src/mastra/extensions/neo4j-skills';
+import { listProposed, readSkill } from '../src/mastra/extensions/neo4j-skills/files';
 
 const ENV_FILE = '.env';
 
@@ -61,8 +64,24 @@ async function main() {
       console.log('Connected to Neo4j.');
       return;
     }
+    case 'skills': {
+      const [sub, name] = process.argv.slice(3);
+      if (!sub) {
+        const drafts = listProposed();
+        console.log(drafts.length ? drafts.map((d) => `${d.name}: ${d.description}`).join('\n') : 'No proposed skills.');
+      } else if (sub === 'show') {
+        console.log(readSkill(name, true) ?? `No proposed skill "${name}".`);
+      } else if (sub === 'approve') {
+        await approveSkill(name);
+        console.log(`Approved ${name}. The agent can load it from the next turn.`);
+      } else if (sub === 'reject') {
+        await rejectSkill(name);
+        console.log(`Rejected ${name}.`);
+      } else throw new Error('Usage: skills [show|approve|reject <name>]');
+      return;
+    }
     default:
-      throw new Error(`Unknown command "${cmd}". Try: list | enable <id> | disable <id> | setup | check`);
+      throw new Error(`Unknown command "${cmd}". Try: list | enable <id> | disable <id> | setup | check | skills`);
   }
 }
 

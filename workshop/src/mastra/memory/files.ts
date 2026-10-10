@@ -28,7 +28,8 @@ function findProjectRoot(): string {
   }
 }
 
-export const MEMORY_DIR = resolve(process.env.MEMORY_DIR ?? join(findProjectRoot(), 'memory'));
+export const PROJECT_ROOT = findProjectRoot();
+export const MEMORY_DIR = resolve(process.env.MEMORY_DIR ?? join(PROJECT_ROOT, 'memory'));
 export const LONG_TERM_FILE = join(MEMORY_DIR, 'long-term.md');
 export const TRACES_FILE = join(MEMORY_DIR, 'traces.jsonl');
 

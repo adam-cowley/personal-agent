@@ -7,6 +7,7 @@ A [Mastra](https://mastra.ai) agent (scaffolded with `npm create mastra@latest`)
 | **Short-term** – recent turns | `memory/short-term/<thread>.md` | `neo4j-short-term` | `(:Conversation)-[:HAS_MESSAGE]->(:Message)`, linked by `[:NEXT]` |
 | **Long-term** – durable facts | `memory/long-term.md` | `neo4j-long-term` | `(:Memory)-[:ABOUT]->(:Entity)-[:RELATED]->(:Entity)` |
 | **Context traces** – how it got there | `memory/traces.jsonl` | `neo4j-context-traces` | `(:Message)-[:TRIGGERED]->(:Trace)-[:RESULTED_IN]->(:Message)`, plus `(:Trace)-[:HAS_STEP]->(:Step)-[:CALLED]->(:ToolCall)` |
+| **Skills** – reusable procedures learned from traces | `skills/<name>/SKILL.md` (approved only) | `neo4j-skills` | `(:Skill)-[:DERIVED_FROM]->(:Trace)`, with `status` |
 
 The flat files are always written, so you can `cat` them next to the graph. Extensions that own a *read* path (short-term, long-term) take over injecting context from the flat files.
 
@@ -31,13 +32,24 @@ npm run ext -- enable short-term      # step 1
 npm run ext -- setup
 ```
 
-then repeat with `long-term` (step 2) and `context-traces` (step 3). `npm run ext` lists what is on; `npm run ext -- disable <id>` turns one off. This just edits `EXTENSIONS=` in `.env`.
+then repeat with `long-term` (step 2), `context-traces` (step 3) and `skills` (step 4, requires `context-traces`). `npm run ext` lists what is on; `npm run ext -- disable <id>` turns one off. This just edits `EXTENSIONS=` in `.env`.
 
 ### Exercises
 
 1. **Short-term:** chat, restart the server, chat again. Run `MATCH (c:Conversation)-[:HAS_MESSAGE]->(m) RETURN c, m` in Neo4j Browser.
 2. **Long-term:** tell it about your team and projects, then `MATCH p=(:Memory)-[:ABOUT]->(:Entity)-[:RELATED*0..2]-() RETURN p`. Notice facts about the same entity connect.
 3. **Traces:** ask it the time in a few cities, then `MATCH p=(:Trace)-[:HAS_STEP]->(:Step)-[:CALLED]->(:ToolCall) RETURN p`. Ask the agent *"how did you answer my last question?"*
+
+4. **Skills (review-gated):** after a few tool-using chats, ask *"Look at how you've answered my time questions and propose a skill for it."* The agent calls `review_traces` then `propose_skill`. Nothing is usable yet:
+
+```bash
+npm run ext -- skills                    # list drafts
+npm run ext -- skills show <name>        # read the draft
+npm run ext -- skills approve <name>     # moves it to skills/ — the agent can now load_skill it
+npm run ext -- skills reject <name>
+```
+
+   Then `MATCH (s:Skill)-[:DERIVED_FROM]->(t:Trace) RETURN s, t` shows which traces a skill came from.
 
 ## How it works
 

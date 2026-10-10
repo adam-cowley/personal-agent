@@ -105,7 +105,7 @@ const tools = {
            WHERE $about = '' OR toLower(t.input) CONTAINS $about OR toLower(t.output) CONTAINS $about
            WITH t ORDER BY t.at DESC LIMIT $limit
            OPTIONAL MATCH (t)-[:HAS_STEP]->(:Step)-[:CALLED]->(tc:ToolCall)
-           RETURN t {.at, .input, .output, .finishReason, .totalTokens} AS trace,
+           RETURN t {.id, .at, .input, .output, .finishReason, .totalTokens} AS trace,
                   collect(tc {.name, .args, .result}) AS toolCalls
            ORDER BY trace.at DESC`,
           { about: about.toLowerCase(), limit: neo4j.int(limit) },
