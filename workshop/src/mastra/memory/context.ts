@@ -29,3 +29,14 @@ export function lastUserText(messages: MastraDBMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'user') return textOf(messages[i]);
   return '';
 }
+
+/**
+ * Stable ids for the two messages of a turn, derived from the user message's id.
+ * Short-term memory and context traces both compute these, so they can point at the
+ * same (:Message) nodes without knowing about each other or the order they run in.
+ */
+export function turnIds(messages: MastraDBMessage[]): { userId: string; assistantId: string } {
+  const user = [...messages].reverse().find((m) => m.role === 'user');
+  const userId = user?.id ?? `${threadIdOf({ messages })}:${Date.now()}`;
+  return { userId, assistantId: `${userId}:assistant` };
+}

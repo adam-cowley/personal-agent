@@ -1,6 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import neo4j from 'neo4j-driver';
-import { lastUserText, threadIdOf } from '../../memory/context';
+import { lastUserText, threadIdOf, turnIds } from '../../memory/context';
 import { run, safely } from '../neo4j';
 import type { Extension, InputProc, OutputProc } from '../types';
 
@@ -54,17 +53,21 @@ const processor: InputProc & OutputProc = {
              ON CREATE SET c.createdAt = $now
            SET c.updatedAt = $now
            WITH c
-           OPTIONAL MATCH (c)-[:HAS_MESSAGE]->(last:Message) WHERE NOT (last)-[:NEXT]->()
+           OPTIONAL MATCH (c)-[:HAS_MESSAGE]->(last:Message)
+             WHERE NOT (last)-[:NEXT]->() AND NOT last.id IN [$userId, $assistantId]
            WITH c, last
-           CREATE (u:Message {id: $userId, role: 'user', content: $user, createdAt: $now})
-           CREATE (a:Message {id: $assistantId, role: 'assistant', content: $assistant, createdAt: $now + 1})
-           CREATE (c)-[:HAS_MESSAGE]->(u), (c)-[:HAS_MESSAGE]->(a), (u)-[:NEXT]->(a)
-           FOREACH (_ IN CASE WHEN last IS NULL THEN [] ELSE [1] END | CREATE (last)-[:NEXT]->(u))`,
+           MERGE (u:Message {id: $userId})
+             SET u.role = 'user', u.content = $user, u.createdAt = $now
+           MERGE (a:Message {id: $assistantId})
+             SET a.role = 'assistant', a.content = $assistant, a.createdAt = $now + 1
+           MERGE (c)-[:HAS_MESSAGE]->(u)
+           MERGE (c)-[:HAS_MESSAGE]->(a)
+           MERGE (u)-[:NEXT]->(a)
+           FOREACH (_ IN CASE WHEN last IS NULL THEN [] ELSE [1] END | MERGE (last)-[:NEXT]->(u))`,
           {
             threadId,
             now: neo4j.int(now),
-            userId: randomUUID(),
-            assistantId: randomUUID(),
+            ...turnIds(messages),
             user: lastUserText(messages),
             assistant: result.text,
           },

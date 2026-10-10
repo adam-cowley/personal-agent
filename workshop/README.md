@@ -6,7 +6,7 @@ A [Mastra](https://mastra.ai) agent (scaffolded with `npm create mastra@latest`)
 | --- | --- | --- | --- |
 | **Short-term** – recent turns | `memory/short-term/<thread>.md` | `neo4j-short-term` | `(:Conversation)-[:HAS_MESSAGE]->(:Message)`, linked by `[:NEXT]` |
 | **Long-term** – durable facts | `memory/long-term.md` | `neo4j-long-term` | `(:Memory)-[:ABOUT]->(:Entity)-[:RELATED]->(:Entity)` |
-| **Context traces** – how it got there | `memory/traces.jsonl` | `neo4j-context-traces` | `(:Trace)-[:HAS_STEP]->(:Step)-[:CALLED]->(:ToolCall)` |
+| **Context traces** – how it got there | `memory/traces.jsonl` | `neo4j-context-traces` | `(:Message)-[:TRIGGERED]->(:Trace)-[:RESULTED_IN]->(:Message)`, plus `(:Trace)-[:HAS_STEP]->(:Step)-[:CALLED]->(:ToolCall)` |
 
 The flat files are always written, so you can `cat` them next to the graph. Extensions that own a *read* path (short-term, long-term) take over injecting context from the flat files.
 

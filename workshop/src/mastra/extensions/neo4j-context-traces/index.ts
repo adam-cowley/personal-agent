@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { createTool } from '@mastra/core/tools';
 import neo4j from 'neo4j-driver';
 import { z } from 'zod';
-import { lastUserText, threadIdOf } from '../../memory/context';
+import { lastUserText, threadIdOf, turnIds } from '../../memory/context';
 import { run, safely, toPlain } from '../neo4j';
+import { isEnabled } from '../registry';
 import type { Extension, OutputProc } from '../types';
 
 /**
@@ -12,7 +13,8 @@ import type { Extension, OutputProc } from '../types';
  * A trace records *how* the agent got to an answer, not just the answer:
  *
  *   (:Trace)-[:IN_CONVERSATION]->(:Conversation)
- *   (:Trace)-[:RESPONDS_TO]->(:Message)          (when short-term is enabled)
+ *   (:Message {role:'user'})-[:TRIGGERED]->(:Trace)-[:RESULTED_IN]->(:Message {role:'assistant'})
+ *                                               (when neo4j-short-term is also enabled)
  *   (:Trace)-[:HAS_STEP]->(:Step)-[:CALLED]->(:ToolCall {name, args, result})
  *
  * The flat memory/traces.jsonl is still written. This adds a queryable graph
@@ -49,11 +51,7 @@ const processor: OutputProc = {
           `MERGE (c:Conversation {id: $threadId})
            CREATE (t:Trace {id: $id, at: $at, input: $input, output: $output,
                             finishReason: $finishReason, totalTokens: $totalTokens})
-           CREATE (t)-[:IN_CONVERSATION]->(c)
-           WITH t, c
-           OPTIONAL MATCH (c)-[:HAS_MESSAGE]->(m:Message {role: 'user'})
-           WITH t, m ORDER BY m.createdAt DESC LIMIT 1
-           FOREACH (_ IN CASE WHEN m IS NULL THEN [] ELSE [1] END | CREATE (t)-[:RESPONDS_TO]->(m))`,
+           CREATE (t)-[:IN_CONVERSATION]->(c)`,
           {
             id,
             threadId,
@@ -64,6 +62,17 @@ const processor: OutputProc = {
             totalTokens: neo4j.int(result.usage?.totalTokens ?? 0),
           },
         );
+        if (isEnabled('neo4j-short-term')) {
+          // Same ids short-term memory uses, so this works whichever extension runs first.
+          await run(
+            `MATCH (t:Trace {id: $id})
+             MERGE (u:Message {id: $userId})
+             MERGE (a:Message {id: $assistantId})
+             MERGE (u)-[:TRIGGERED]->(t)
+             MERGE (t)-[:RESULTED_IN]->(a)`,
+            { id, ...turnIds(messages) },
+          );
+        }
         await run(
           `MATCH (t:Trace {id: $id})
            UNWIND $steps AS s
