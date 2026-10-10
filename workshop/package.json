@@ -1,0 +1,33 @@
+{
+  "name": "workshop",
+  "version": "1.0.0",
+  "description": "A general-purpose Mastra agent with a local workspace, shell tools, memory, task tracking, web access, and recurring schedules.",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "dev": "mastra dev",
+    "build": "mastra build",
+    "start": "mastra start",
+    "ext": "tsx --env-file-if-exists=.env scripts/extensions.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "@mastra/core": "1.75.0",
+    "@mastra/libsql": "1.25.1",
+    "neo4j-driver": "^6.2.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "mastra": "1.33.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  }
+}
