@@ -8,7 +8,7 @@
  * This file only holds the ids so that core code can ask "is X on?" without
  * importing the extensions themselves (and, with them, the Neo4j driver).
  */
-export const EXTENSION_IDS = ['neo4j-short-term', 'neo4j-long-term', 'neo4j-context-traces', 'neo4j-skills'] as const;
+export const EXTENSION_IDS = ['neo4j-short-term', 'neo4j-long-term', 'neo4j-context-traces', 'neo4j-skills', 'neo4j-workflows'] as const;
 export type ExtensionId = (typeof EXTENSION_IDS)[number];
 
 export function enabledIds(): ExtensionId[] {

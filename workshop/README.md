@@ -8,6 +8,7 @@ A [Mastra](https://mastra.ai) agent (scaffolded with `npm create mastra@latest`)
 | **Long-term** – durable facts | `memory/long-term.md` | `neo4j-long-term` | `(:Memory)-[:ABOUT]->(:Entity)-[:RELATED]->(:Entity)` |
 | **Context traces** – how it got there | `memory/traces.jsonl` | `neo4j-context-traces` | `(:Message)-[:TRIGGERED]->(:Trace)-[:RESULTED_IN]->(:Message)`, plus `(:Trace)-[:HAS_STEP]->(:Step)-[:CALLED]->(:ToolCall)` |
 | **Skills** – reusable procedures learned from traces | `skills/<name>/SKILL.md` (approved only) | `neo4j-skills` | `(:Skill)-[:DERIVED_FROM]->(:Trace)`, with `status` |
+| **Workflows** – fixed tool sequences learned from traces | `workflows/<name>.json` (approved only) | `neo4j-workflows` | `(:Workflow)-[:HAS_STEP]->(:WorkflowStep)`, `(:Workflow)-[:DERIVED_FROM]->(:Trace)` |
 
 The flat files are always written, so you can `cat` them next to the graph. Extensions that own a *read* path (short-term, long-term) take over injecting context from the flat files.
 
@@ -32,7 +33,7 @@ npm run ext -- enable short-term      # step 1
 npm run ext -- setup
 ```
 
-then repeat with `long-term` (step 2), `context-traces` (step 3) and `skills` (step 4, requires `context-traces`). `npm run ext` lists what is on; `npm run ext -- disable <id>` turns one off. This just edits `EXTENSIONS=` in `.env`.
+then repeat with `long-term` (step 2), `context-traces` (step 3) and `skills` (step 4) and `workflows` (step 5). Steps 4 and 5 require `context-traces`. `npm run ext` lists what is on; `npm run ext -- disable <id>` turns one off. This just edits `EXTENSIONS=` in `.env`.
 
 ### Exercises
 
@@ -50,6 +51,17 @@ npm run ext -- skills reject <name>
 ```
 
    Then `MATCH (s:Skill)-[:DERIVED_FROM]->(t:Trace) RETURN s, t` shows which traces a skill came from.
+
+5. **Workflows (review-gated):** a skill is advice the model may follow; a workflow is a fixed sequence of tool calls that runs the same way every time (as a real Mastra workflow built from stored data, never generated code). Ask the agent for the time in a few cities, then *"Turn that into a workflow."* It proposes JSON like `{"tool": "get_current_time", "args": {"timezone": "{{inputs.tz}}"}}`, with `{{inputs.x}}` for caller values and `{{steps.N.field}}` for earlier outputs. Drafts are checked on save (tools must exist, references must be valid), then reviewed:
+
+```bash
+npm run ext -- workflows                 # list drafts
+npm run ext -- workflows show <name>
+npm run ext -- workflows approve <name>  # now runnable via run_workflow
+npm run ext -- workflows reject <name>
+```
+
+   Workflow steps can't call the propose/run tools, so workflows can't create or nest other workflows. Review the steps carefully: approving a workflow approves every tool call in it.
 
 ## How it works
 

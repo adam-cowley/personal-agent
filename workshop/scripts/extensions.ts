@@ -5,7 +5,8 @@
  *   npm run ext -- disable <id>      switch it off
  *   npm run ext -- setup             create Neo4j constraints/indexes for enabled extensions
  *   npm run ext -- check             test the Neo4j connection
- *   npm run ext -- skills [show|approve|reject <name>]   review skills the agent proposed
+ *   npm run ext -- skills [show|approve|reject <name>]      review skills the agent proposed
+ *   npm run ext -- workflows [show|approve|reject <name>]   review workflows the agent proposed
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { ALL_EXTENSIONS, activeExtensions } from '../src/mastra/extensions';
@@ -13,6 +14,8 @@ import { EXTENSION_IDS, enabledIds, type ExtensionId } from '../src/mastra/exten
 import { closeDriver, getDriver } from '../src/mastra/extensions/neo4j';
 import { approveSkill, rejectSkill } from '../src/mastra/extensions/neo4j-skills';
 import { listProposed, readSkill } from '../src/mastra/extensions/neo4j-skills/files';
+import { approveWorkflow, rejectWorkflow } from '../src/mastra/extensions/neo4j-workflows';
+import { listProposed as listProposedWf, readWorkflow } from '../src/mastra/extensions/neo4j-workflows/files';
 
 const ENV_FILE = '.env';
 
@@ -80,8 +83,25 @@ async function main() {
       } else throw new Error('Usage: skills [show|approve|reject <name>]');
       return;
     }
+    case 'workflows': {
+      const [sub, name] = process.argv.slice(3);
+      if (!sub) {
+        const drafts = listProposedWf();
+        console.log(drafts.length ? drafts.map((d) => `${d.name}: ${d.description} (${d.steps.map((s) => s.tool).join(' -> ')})`).join('\n') : 'No proposed workflows.');
+      } else if (sub === 'show') {
+        const w = readWorkflow(name, true);
+        console.log(w ? JSON.stringify(w, null, 2) : `No proposed workflow "${name}".`);
+      } else if (sub === 'approve') {
+        await approveWorkflow(name);
+        console.log(`Approved ${name}. The agent can run it from the next turn.`);
+      } else if (sub === 'reject') {
+        await rejectWorkflow(name);
+        console.log(`Rejected ${name}.`);
+      } else throw new Error('Usage: workflows [show|approve|reject <name>]');
+      return;
+    }
     default:
-      throw new Error(`Unknown command "${cmd}". Try: list | enable <id> | disable <id> | setup | check | skills`);
+      throw new Error(`Unknown command "${cmd}". Try: list | enable <id> | disable <id> | setup | check | skills | workflows`);
   }
 }
 
